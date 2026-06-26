@@ -295,19 +295,6 @@ def process_pipeline(person_np, necklace_np, scale_multiplier, style_str, y_offs
         target_w = int(final_neck_width * (final_scale / 0.85) * yaw_squish)
         target_h = int(target_w * true_aspect)
     
-        # Print measurement report
-        print(f"--- Sizing Report ---")
-        print(f"Jaw Width: {jaw_width:.1f} px")
-        print(f"Estimated Neck Width (anatomical kp): {est_neck_w_kp:.1f} px")
-        if mask_width is not None:
-            print(f"Raw Mask Neck Width: {mask_width:.1f} px")
-        print(f"Final Neck Width (used): {final_neck_width:.1f} px")
-        print(f"Sizing Source: {sizing_source}")
-        print(f"Target Necklace Width (scaled + yaw squished): {target_w:.1f} px")
-        print(f"Necklace is {target_w / (final_neck_width + 1e-5) * 100:.1f}% of the neck width")
-        print(f"Style: {style.upper()} (Offset: {offset_val:.1f} px)")
-        print(f"---------------------")
-    
         # Anchor point fraction based on aspect ratio
         if true_aspect < 0.35:
             anchor_y_frac = 0.05
@@ -346,7 +333,52 @@ def process_pipeline(person_np, necklace_np, scale_multiplier, style_str, y_offs
         else:
             anchor_y = target_h * anchor_y_frac
             
+        # Dynamic Height Compensation for Choker/Collar styles
+        orig_seat_y = neck_seat_y
+        bottom_dist = target_h - anchor_y
+        
+        # Define neck limits
+        neck_top = int(chin_y)
+        neck_bottom = int(sh_mid_y)
+        height_shift = 0
+        
+        if style == "choker":
+            # We want the bottom of the choker to sit above the collarbones (neck_bottom - 15)
+            ideal_bottom_y = neck_bottom - 15
+            if neck_seat_y + bottom_dist > ideal_bottom_y:
+                neck_seat_y = ideal_bottom_y - int(bottom_dist)
+            # Apply chin guard (at least 15px below the chin)
+            neck_seat_y = max(neck_top + 15 + int(anchor_y), neck_seat_y)
+            height_shift = neck_seat_y - orig_seat_y
+            
+        elif style == "collar":
+            # Collars are worn higher, bottom of collar should sit above neck_bottom - 30
+            ideal_bottom_y = neck_bottom - 30
+            if neck_seat_y + bottom_dist > ideal_bottom_y:
+                neck_seat_y = ideal_bottom_y - int(bottom_dist)
+            # Apply chin guard (at least 10px below the chin)
+            neck_seat_y = max(neck_top + 10 + int(anchor_y), neck_seat_y)
+            height_shift = neck_seat_y - orig_seat_y
+            
+        # Print measurement report
+        print(f"--- Sizing Report ---")
+        print(f"Jaw Width: {jaw_width:.1f} px")
+        print(f"Estimated Neck Width (anatomical kp): {est_neck_w_kp:.1f} px")
+        if mask_width is not None:
+            print(f"Raw Mask Neck Width: {mask_width:.1f} px")
+        print(f"Final Neck Width (used): {final_neck_width:.1f} px")
+        print(f"Sizing Source: {sizing_source}")
+        print(f"Target Necklace Width (scaled + yaw squished): {target_w:.1f} px")
+        print(f"Target Necklace Height: {target_h:.1f} px")
+        print(f"Necklace is {target_w / (final_neck_width + 1e-5) * 100:.1f}% of the neck width")
+        print(f"Style: {style.upper()} (Offset: {offset_val:.1f} px)")
+        if height_shift != 0:
+            print(f"Height Compensation Shift: {height_shift} px")
+        print(f"---------------------")
+        
         print(f"[Debug] Calculated dynamic anchor_y: {anchor_y:.1f} px (default bounding-box top was {target_h * anchor_y_frac:.1f} px)")
+        if height_shift != 0:
+            print(f"[Debug] Height Compensation shifted neck_seat_y from {orig_seat_y} px to {neck_seat_y} px (necklace bottom dist: {bottom_dist:.1f} px)")
         
         M = cv2.getRotationMatrix2D((anchor_x, anchor_y), angle, 1.0)
         M[0, 2] += (neck_seat_x - anchor_x)
