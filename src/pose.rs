@@ -18,14 +18,11 @@ pub fn process_pipeline(person_image: &image::RgbImage, necklace_image: &image::
         let p_np = p_ndarray.into_pyarray_bound(py);
         let n_np = n_ndarray.into_pyarray_bound(py);
 
-        #[cfg(target_os = "windows")]
-        {
-            let os = py.import_bound("os")?;
-            let path_str: String = std::env::var("PATH").unwrap_or_default();
-            for p in path_str.split(';') {
-                if !p.is_empty() {
-                    let _ = os.call_method1("add_dll_directory", (p,));
-                }
+        let os = py.import_bound("os")?;
+        let path_str: String = std::env::var("PATH").unwrap_or_default();
+        for p in path_str.split(';') {
+            if !p.is_empty() {
+                let _ = os.call_method1("add_dll_directory", (p,));
             }
         }
 
@@ -191,9 +188,12 @@ def process_pipeline(person_np, necklace_np, scale_multiplier, style_str, y_offs
             target_y = (face_lms[176].y + face_lms[400].y) / 2.0
         elif style == "pendant":
             default_scale_factor = 1.80
-            default_y_offset = 10.0
-            # Below collarbone/shoulders
-            target_y = sh_mid_y / h + (sh_mid_y / h - chin.y) * 0.15
+            default_y_offset = 0.0
+            # Chain wraps around the neck — the chain-corner anchor belongs at throat level,
+            # same as choker. The full-image anchor_y scan finds the topmost chain pixel
+            # (corner tops, not the jewel), so the chain starts at the neck and the
+            # pendant jewel hangs naturally down to the chest.
+            target_y = chin.y + (sh_mid_y / h - chin.y) * 0.40
         else:
             # Fallback to choker
             style = "choker"
@@ -319,22 +319,41 @@ def process_pipeline(person_np, necklace_np, scale_multiplier, style_str, y_offs
         # 4. Affine Transform Matrix Setup
         anchor_x = target_w / 2.0
         
-        # Dynamically find the Y coordinate of the top edge of the main band in the center of the necklace
         ah, aw = alpha_resized.shape[:2]
-        c_left = int(aw * 0.45)
-        c_right = int(aw * 0.55)
-        center_alpha = alpha_resized[:, c_left:c_right]
-        non_zero_ys = []
-        for col_idx in range(center_alpha.shape[1]):
-            col = center_alpha[:, col_idx]
-            ys_col = np.where(col > 0.05)[0]
-            if len(ys_col) > 0:
-                non_zero_ys.append(ys_col.min())
         
-        if len(non_zero_ys) > 0:
-            anchor_y = float(np.median(non_zero_ys))
+        if style == "pendant":
+            # Pendant chains are V-shaped: the center strip is transparent until the jewel.
+            # Sampling the center would anchor the JEWEL at target_y, making the chain
+            # shoot upward past the face. Instead, scan the FULL image width to find the
+            # topmost non-transparent pixel anywhere — this is where the chain corners
+            # wrap around the neck/shoulder, which is the true chain-start anchor.
+            global_top_ys = []
+            for col_idx in range(aw):
+                col = alpha_resized[:, col_idx]
+                ys_col = np.where(col > 0.05)[0]
+                if len(ys_col) > 0:
+                    global_top_ys.append(int(ys_col.min()))
+            if len(global_top_ys) > 0:
+                # 5th percentile: robust against lone stray pixels at image corners
+                anchor_y = float(np.percentile(global_top_ys, 5))
+            else:
+                anchor_y = target_h * anchor_y_frac
         else:
-            anchor_y = target_h * anchor_y_frac
+            # Choker / Collar: the band runs straight across the center.
+            # Sample the center 10% strip and take the median top pixel — finds the band top.
+            c_left = int(aw * 0.45)
+            c_right = int(aw * 0.55)
+            center_alpha = alpha_resized[:, c_left:c_right]
+            non_zero_ys = []
+            for col_idx in range(center_alpha.shape[1]):
+                col = center_alpha[:, col_idx]
+                ys_col = np.where(col > 0.05)[0]
+                if len(ys_col) > 0:
+                    non_zero_ys.append(ys_col.min())
+            if len(non_zero_ys) > 0:
+                anchor_y = float(np.median(non_zero_ys))
+            else:
+                anchor_y = target_h * anchor_y_frac
             
         # Dynamic Height Compensation for Choker/Collar styles
         orig_seat_y = neck_seat_y
@@ -346,13 +365,10 @@ def process_pipeline(person_np, necklace_np, scale_multiplier, style_str, y_offs
         height_shift = 0
         
         if style == "choker":
-            # We want the bottom of the choker to sit above the collarbones (neck_bottom - 15)
-            ideal_bottom_y = neck_bottom - 15
-            if neck_seat_y + bottom_dist > ideal_bottom_y:
-                neck_seat_y = ideal_bottom_y - int(bottom_dist)
-            # Apply chin guard (at least 15px below the chin)
-            neck_seat_y = max(neck_top + 15 + int(anchor_y), neck_seat_y)
-            height_shift = neck_seat_y - orig_seat_y
+            # target_y already places the anchor at the anatomically correct throat position.
+            # No height compensation: the band extends below the anchor by its own height,
+            # which is the natural correct behaviour for any choker regardless of size.
+            height_shift = 0
             
         elif style == "collar":
             # Collars are worn higher, bottom of collar should sit above neck_bottom - 30
@@ -362,6 +378,11 @@ def process_pipeline(person_np, necklace_np, scale_multiplier, style_str, y_offs
             # Apply chin guard (at least 10px below the chin)
             neck_seat_y = max(neck_top + 10 + int(anchor_y), neck_seat_y)
             height_shift = neck_seat_y - orig_seat_y
+            
+        elif style == "pendant":
+            # No height compensation for pendant: target_y already places the chain
+            # anchor at the correct throat level. Let the pendant hang naturally.
+            height_shift = 0
             
         # Print measurement report
         print(f"--- Sizing Report ---")
@@ -392,8 +413,44 @@ def process_pipeline(person_np, necklace_np, scale_multiplier, style_str, y_offs
         
         # 5. Advanced Alpha Compositing
         warped_a = cv2.GaussianBlur(warped_a, (3, 3), 0)
-        warped_a = np.expand_dims(np.clip(warped_a, 0.0, 1.0), axis=2)
+        warped_a = np.clip(warped_a, 0.0, 1.0)
         
+        if style == "pendant":
+            # Mask out the back of the chain and any floating laces.
+            # At throat level, chain must be within neck width.
+            # Down at collarbone level, chain can expand to full width.
+            erase_mask = np.ones((h, w), dtype=np.float32)
+            
+            y_top = int(neck_seat_y) - 15
+            y_bottom = int(sh_mid_y)
+            
+            for y in range(h):
+                if y < y_top:
+                    erase_mask[y, :] = 0.0
+                elif y < y_bottom:
+                    progress = (y - y_top) / float(y_bottom - y_top)
+                    
+                    # Vertical fade to simulate going behind the neck
+                    alpha_y = min(1.0, (y - y_top) / 25.0)
+                    
+                    # Horizontal bound: must fit in neck at top, expands as it goes down
+                    radius_top = est_neck_w_kp * 0.45
+                    radius_bottom = w
+                    allowed_r = radius_top + progress * (radius_bottom - radius_top)
+                    
+                    for x in range(w):
+                        dist_x = abs(x - face_center_x)
+                        if dist_x > allowed_r:
+                            # Soft fade for floating laces outside the allowed cone
+                            excess = dist_x - allowed_r
+                            alpha_x = max(0.0, 1.0 - (excess / 10.0))
+                            erase_mask[y, x] = min(alpha_y, alpha_x)
+                        else:
+                            erase_mask[y, x] = min(erase_mask[y, x], alpha_y)
+                            
+            warped_a = warped_a * erase_mask
+
+        warped_a = np.expand_dims(warped_a, axis=2)
         blended = warped_rgb * warped_a + person_rgb.astype(np.float32) * (1.0 - warped_a)
         result = np.clip(blended, 0, 255).astype(np.uint8)
         
