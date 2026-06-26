@@ -14,8 +14,14 @@ struct Args {
     #[arg(short, long)]
     output: String,
 
-    #[arg(short, long, default_value_t = 0.48)]
+    #[arg(short, long, default_value_t = 1.0)]
     scale: f64,
+
+    #[arg(short, long, default_value = "choker")]
+    style: String,
+
+    #[arg(short, long)]
+    y_offset: Option<f64>,
 }
 
 fn main() {
@@ -37,7 +43,7 @@ fn main() {
     let necklace_rgba = necklace_img.to_rgba8();
 
     println!("Extracting pose landmarks and rendering necklace via Python/OpenCV pipeline...");
-    let pipeline_result = pose::process_pipeline(&person_rgb, &necklace_rgba, args.scale);
+    let pipeline_result = pose::process_pipeline(&person_rgb, &necklace_rgba, args.scale, &args.style, args.y_offset);
     
     match pipeline_result {
         Ok(Some(rendered_img)) => {
