@@ -25,9 +25,12 @@ struct Args {
 }
 
 fn main() {
-    // Force the embedded Python interpreter to load its standard library from Python 3.11
-    std::env::set_var("PYTHONHOME", "C:\\Users\\Thethinker\\AppData\\Local\\Programs\\Python\\Python311");
-    std::env::set_var("PATH", "C:\\Users\\Thethinker\\AppData\\Local\\Programs\\Python\\Python311;C:\\Users\\Thethinker\\AppData\\Local\\Programs\\Python\\Python311\\Scripts");
+    // Force the embedded Python interpreter to load its standard library from Python 3.11 (Windows only)
+    #[cfg(target_os = "windows")]
+    {
+        std::env::set_var("PYTHONHOME", "C:\\Users\\Thethinker\\AppData\\Local\\Programs\\Python\\Python311");
+        std::env::set_var("PATH", "C:\\Users\\Thethinker\\AppData\\Local\\Programs\\Python\\Python311;C:\\Users\\Thethinker\\AppData\\Local\\Programs\\Python\\Python311\\Scripts");
+    }
 
     let args = Args::parse();
 
