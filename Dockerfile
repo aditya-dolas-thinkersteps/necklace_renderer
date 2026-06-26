@@ -1,7 +1,7 @@
 # ==========================================
 # Stage 1: Build the Rust Application
 # ==========================================
-FROM rust:1.75-slim-bookworm AS builder
+FROM rust:1.80-slim-bookworm AS builder
 
 # Install Python development files and compiler tools required by PyO3/numpy-rust
 RUN apt-get update && apt-get install -y \
