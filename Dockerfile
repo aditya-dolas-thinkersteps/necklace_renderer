@@ -1,5 +1,5 @@
 # Stage 1: Build the Rust binary
-FROM rust:nightly-bookworm AS builder
+FROM rustlang/rust:nightly AS builder
 
 # Install python3-dev (Python 3.11 headers on Bookworm)
 RUN apt-get update && apt-get install -y \
