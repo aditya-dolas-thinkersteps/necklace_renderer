@@ -113,7 +113,7 @@ async fn run_web_server(port: u16) {
         .layer(axum::extract::DefaultBodyLimit::max(50 * 1024 * 1024))
         .layer(tower_http::cors::CorsLayer::permissive());
 
-    let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
+    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
     println!("Starting local Try-On server at http://{}", addr);
 
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
@@ -131,7 +131,11 @@ async fn main() {
     let args = Args::parse();
 
     if args.server {
-        run_web_server(args.port).await;
+        let port = std::env::var("PORT")
+            .ok()
+            .and_then(|p| p.parse::<u16>().ok())
+            .unwrap_or(args.port);
+        run_web_server(port).await;
         return;
     }
 
