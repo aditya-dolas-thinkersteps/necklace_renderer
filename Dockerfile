@@ -1,8 +1,13 @@
 # Stage 1: Build the Rust binary
-FROM rustlang/rust:nightly AS builder
+FROM python:3.11-bookworm AS builder
 
-# Install python3-dev (Python 3.11 headers on Bookworm)
+# Install Rust nightly
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Install pkg-config for compilation
 RUN apt-get update && apt-get install -y \
+    pkg-config \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
