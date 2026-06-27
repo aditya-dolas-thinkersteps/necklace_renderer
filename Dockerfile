@@ -34,7 +34,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install python packages needed by pipeline
 RUN pip3 install --no-cache-dir \
-    mediapipe \
+    mediapipe==0.10.14 \
     opencv-python-headless \
     numpy
 
