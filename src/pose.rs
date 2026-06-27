@@ -18,11 +18,14 @@ pub fn process_pipeline(person_image: &image::RgbImage, necklace_image: &image::
         let p_np = p_ndarray.into_pyarray_bound(py);
         let n_np = n_ndarray.into_pyarray_bound(py);
 
-        let os = py.import_bound("os")?;
-        let path_str: String = std::env::var("PATH").unwrap_or_default();
-        for p in path_str.split(';') {
-            if !p.is_empty() {
-                let _ = os.call_method1("add_dll_directory", (p,));
+        #[cfg(target_os = "windows")]
+        {
+            let os = py.import_bound("os")?;
+            let path_str: String = std::env::var("PATH").unwrap_or_default();
+            for p in path_str.split(';') {
+                if !p.is_empty() {
+                    let _ = os.call_method1("add_dll_directory", (p,));
+                }
             }
         }
 

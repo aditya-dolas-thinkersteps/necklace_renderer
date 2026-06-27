@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Necklace Try-On Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-grad: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --panel-bg: rgba(30, 41, 59, 0.45);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --accent-color: #06b6d4;
+            --accent-glow: rgba(6, 182, 212, 0.4);
+            --accent-hover: #0891b2;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --success-color: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background: var(--bg-grad);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+        }
+
+        header {
+            margin-bottom: 2.5rem;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #22d3ee, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        p.subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 2rem;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        @media (max-width: 900px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 600px) {
+            .workspace-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .dropzone {
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 2rem 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(15, 23, 42, 0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 220px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--accent-color);
+            background: rgba(6, 182, 212, 0.05);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .dropzone svg {
+            width: 48px;
+            height: 48px;
+            fill: none;
+            stroke: var(--accent-color);
+            stroke-width: 1.5;
+            margin-bottom: 1rem;
+            transition: transform 0.2s ease;
+        }
+
+        .dropzone:hover svg {
+            transform: translateY(-4px);
+        }
+
+        .dropzone span {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .dropzone p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .dropzone input[type="file"] {
+            display: none;
+        }
+
+        .preview-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #0f172a;
+            display: none;
+            z-index: 10;
+        }
+
+        .dropzone.has-file .preview-img {
+            display: block;
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(239, 68, 68, 0.85);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            z-index: 20;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+            transition: background 0.2s;
+        }
+
+        .dropzone.has-file .remove-btn {
+            display: flex;
+        }
+
+        .remove-btn:hover {
+            background: rgb(220, 38, 38);
+        }
+
+        .result-container {
+            grid-column: span 2;
+            min-height: 350px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            background: rgba(15, 23, 42, 0.3);
+            position: relative;
+            overflow: hidden;
+            padding: 1rem;
+        }
+
+        @media (max-width: 600px) {
+            .result-container {
+                grid-column: span 1;
+            }
+        }
+
+        .result-placeholder {
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .result-placeholder svg {
+            width: 64px;
+            height: 64px;
+            stroke: var(--text-secondary);
+            stroke-width: 1;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .result-img {
+            max-width: 100%;
+            max-height: 550px;
+            border-radius: 12px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+            display: none;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        select, input[type="range"] {
+            width: 100%;
+        }
+
+        select {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.8rem;
+            color: var(--text-primary);
+            outline: none;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        select:focus {
+            border-color: var(--accent-color);
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .slider-value {
+            min-width: 48px;
+            text-align: right;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--accent-color);
+            background: rgba(6, 182, 212, 0.1);
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--accent-glow);
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .btn-render {
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent-color) 0%, #818cf8 100%);
+            border: none;
+            border-radius: 14px;
+            padding: 1rem;
+            color: white;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-render:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(6, 182, 212, 0.5);
+        }
+
+        .btn-render:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-render:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .spinner {
+            width: 22px;
+            height: 22px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .download-btn {
+            margin-top: 1rem;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--success-color);
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .download-btn:hover {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .error-banner {
+            display: none;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+            padding: 0.8rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            width: 100%;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Necklace Try-On Studio</h1>
+        <p class="subtitle">Interactive Web Testing Sandbox</p>
+    </header>
+
+    <main>
+        <div class="glass-panel" style="display: flex; flex-direction: column; gap: 1.5rem;">
+            <div class="error-banner" id="errorBanner"></div>
+            
+            <div class="workspace-grid">
+                <!-- Person Dropzone -->
+                <div class="dropzone" id="dropzonePerson">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" stroke="currentColor"/>
+                    </svg>
+                    <span>Person Image</span>
+                    <p>Drag & drop or click</p>
+                    <input type="file" id="inputPerson" accept="image/*">
+                    <img class="preview-img" id="previewPerson">
+                    <button class="remove-btn" onclick="removeFile(event, 'Person')">&times;</button>
+                </div>
+
+                <!-- Necklace Dropzone -->
+                <div class="dropzone" id="dropzoneNecklace">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2a4 4 0 0 0-4 4v1.17A8 8 0 0 0 4 15c0 4.42 3.58 8 8 8s8-3.58 8-8a8 8 0 0 0-4-7.83V6a4 4 0 0 0-4-4zm-2 4a2 2 0 1 1 4 0v1.05a7.93 7.93 0 0 0-4 0V6z" stroke="currentColor"/>
+                    </svg>
+                    <span>Necklace Image</span>
+                    <p>Drag & drop or click</p>
+                    <input type="file" id="inputNecklace" accept="image/*">
+                    <img class="preview-img" id="previewNecklace">
+                    <button class="remove-btn" onclick="removeFile(event, 'Necklace')">&times;</button>
+                </div>
+            </div>
+
+            <!-- Result Box -->
+            <div class="result-container" id="resultContainer">
+                <div class="result-placeholder" id="resultPlaceholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    <p>Ready to try on. Configure and click Render.</p>
+                </div>
+                <img class="result-img" id="resultImg">
+                <button class="download-btn" id="downloadBtn" onclick="downloadResult()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                    </svg>
+                    Download Image
+                </button>
+            </div>
+        </div>
+
+        <div class="glass-panel" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <div class="control-group">
+                    <label for="styleSelect">Try-on Style</label>
+                    <select id="styleSelect">
+                        <option value="choker">Choker (Lower Neck/Throat)</option>
+                        <option value="collar">Collar (Mid-Neck)</option>
+                        <option value="pendant">Pendant (Chest/Collarbone)</option>
+                    </select>
+                </div>
+
+
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <button class="btn-render" id="renderBtn" onclick="triggerRender()" disabled>
+                    <div class="spinner" id="renderSpinner"></div>
+                    <span id="renderText">Render Try-on</span>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // DOM Setup
+        const inputPerson = document.getElementById('inputPerson');
+        const inputNecklace = document.getElementById('inputNecklace');
+        const previewPerson = document.getElementById('previewPerson');
+        const previewNecklace = document.getElementById('previewNecklace');
+        const renderBtn = document.getElementById('renderBtn');
+
+        const errorBanner = document.getElementById('errorBanner');
+        const resultPlaceholder = document.getElementById('resultPlaceholder');
+        const resultImg = document.getElementById('resultImg');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const renderSpinner = document.getElementById('renderSpinner');
+        const renderText = document.getElementById('renderText');
+
+        // Drag/Drop Listeners
+        setupDropzone('dropzonePerson', inputPerson, previewPerson, 'Person');
+        setupDropzone('dropzoneNecklace', inputNecklace, previewNecklace, 'Necklace');
+
+
+
+        function setupDropzone(id, input, img, key) {
+            const el = document.getElementById(id);
+            el.addEventListener('click', () => input.click());
+
+            input.addEventListener('change', () => {
+                handleFile(input.files[0], el, img);
+            });
+
+            el.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                el.classList.add('dragover');
+            });
+
+            el.addEventListener('dragleave', () => {
+                el.classList.remove('dragover');
+            });
+
+            el.addEventListener('drop', (e) => {
+                e.preventDefault();
+                el.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    input.files = e.dataTransfer.files;
+                    handleFile(input.files[0], el, img);
+                }
+            });
+        }
+
+        function handleFile(file, el, img) {
+            if (!file) return;
+            const r = new FileReader();
+            r.onload = (e) => {
+                img.src = e.target.result;
+                el.classList.add('has-file');
+                checkBtnState();
+            };
+            r.readAsDataURL(file);
+        }
+
+        function removeFile(e, key) {
+            e.stopPropagation();
+            const input = document.getElementById('input' + key);
+            const preview = document.getElementById('preview' + key);
+            const el = document.getElementById('dropzone' + key);
+
+            input.value = '';
+            preview.src = '';
+            el.classList.remove('has-file');
+            checkBtnState();
+        }
+
+        function checkBtnState() {
+            renderBtn.disabled = !(inputPerson.files.length > 0 && inputNecklace.files.length > 0);
+        }
+
+        // Trigger POST Render
+        let currentResultBlobUrl = null;
+
+        async function triggerRender() {
+            errorBanner.style.display = 'none';
+            renderSpinner.style.display = 'block';
+            renderText.textContent = 'Processing...';
+            renderBtn.disabled = true;
+
+            const fd = new FormData();
+            fd.append('person', inputPerson.files[0]);
+            fd.append('necklace', inputNecklace.files[0]);
+            fd.append('style', document.getElementById('styleSelect').value);
+
+
+            try {
+                const res = await fetch('/render', {
+                    method: 'POST',
+                    body: fd
+                });
+
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(text || 'Pipeline failed to process image');
+                }
+
+                const blob = await res.blob();
+                if (currentResultBlobUrl) {
+                    URL.revokeObjectURL(currentResultBlobUrl);
+                }
+                currentResultBlobUrl = URL.createObjectURL(blob);
+                
+                // Show Result
+                resultPlaceholder.style.display = 'none';
+                resultImg.src = currentResultBlobUrl;
+                resultImg.style.display = 'block';
+                downloadBtn.style.display = 'flex';
+            } catch (err) {
+                errorBanner.textContent = err.message;
+                errorBanner.style.display = 'block';
+            } finally {
+                renderSpinner.style.display = 'none';
+                renderText.textContent = 'Render Try-on';
+                checkBtnState();
+            }
+        }
+
+        function downloadResult() {
+            if (!currentResultBlobUrl) return;
+            const a = document.createElement('a');
+            a.href = currentResultBlobUrl;
+            a.download = 'tryon_result.png';
+            a.click();
+        }
+    </script>
+</body>
+</html>
