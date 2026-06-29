@@ -359,7 +359,6 @@
         }
 
         .download-btn {
-            margin-top: 1rem;
             background: rgba(16, 185, 129, 0.15);
             border: 1px solid rgba(16, 185, 129, 0.3);
             color: var(--success-color);
@@ -367,7 +366,7 @@
             border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
-            display: none;
+            display: flex;
             align-items: center;
             gap: 0.5rem;
             transition: all 0.2s;
@@ -375,6 +374,25 @@
 
         .download-btn:hover {
             background: var(--success-color);
+            color: white;
+        }
+
+        .reset-btn {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .reset-btn:hover {
+            background: #ef4444;
             color: white;
         }
 
@@ -440,12 +458,21 @@
                     <p>Ready to try on. Configure and click Render.</p>
                 </div>
                 <img class="result-img" id="resultImg">
-                <button class="download-btn" id="downloadBtn" onclick="downloadResult()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-                    </svg>
-                    Download Image
-                </button>
+                <div class="action-buttons" id="actionButtons" style="display: none; gap: 1rem; margin-top: 1.5rem; justify-content: center; width: 100%;">
+                    <button class="reset-btn" onclick="resetResult()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                            <path d="M3 3v5h5"/>
+                        </svg>
+                        Reset
+                    </button>
+                    <button class="download-btn" id="downloadBtn" onclick="downloadResult()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                        </svg>
+                        Download Image
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -455,7 +482,6 @@
                     <label for="styleSelect">Try-on Style</label>
                     <select id="styleSelect">
                         <option value="choker">Choker (Lower Neck/Throat)</option>
-                        <option value="collar">Collar (Mid-Neck)</option>
                         <option value="pendant">Pendant (Chest/Collarbone)</option>
                     </select>
                 </div>
@@ -483,6 +509,7 @@
         const errorBanner = document.getElementById('errorBanner');
         const resultPlaceholder = document.getElementById('resultPlaceholder');
         const resultImg = document.getElementById('resultImg');
+        const actionButtons = document.getElementById('actionButtons');
         const downloadBtn = document.getElementById('downloadBtn');
         const renderSpinner = document.getElementById('renderSpinner');
         const renderText = document.getElementById('renderText');
@@ -583,7 +610,7 @@
                 resultPlaceholder.style.display = 'none';
                 resultImg.src = currentResultBlobUrl;
                 resultImg.style.display = 'block';
-                downloadBtn.style.display = 'flex';
+                actionButtons.style.display = 'flex';
             } catch (err) {
                 errorBanner.textContent = err.message;
                 errorBanner.style.display = 'block';
@@ -600,6 +627,17 @@
             a.href = currentResultBlobUrl;
             a.download = 'tryon_result.png';
             a.click();
+        }
+
+        function resetResult() {
+            resultImg.style.display = 'none';
+            resultImg.src = '';
+            actionButtons.style.display = 'none';
+            resultPlaceholder.style.display = 'block';
+            if (currentResultBlobUrl) {
+                URL.revokeObjectURL(currentResultBlobUrl);
+                currentResultBlobUrl = null;
+            }
         }
     </script>
 </body>
